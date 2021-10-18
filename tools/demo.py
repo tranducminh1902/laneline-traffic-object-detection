@@ -96,14 +96,22 @@ def detect(cfg,opt):
     nms_time = AverageMeter()
     
     for path, img, img_det, vid_cap,shapes in dataset:
+    
+        od_img = torch.from_numpy(img).to(device)
+        od_img = od_img.half() if half else od_img.float()  # uint8 to fp16/32
+        od_img /= 255.0  # 0 - 255 to 0.0 - 1.0
+        if od_img.ndimension() == 3:
+            od_img = od_img.unsqueeze(0)
+
         img = transform(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         if img.ndimension() == 3:
             img = img.unsqueeze(0)
+
         # Inference
         t1 = time_synchronized()
         det_out, da_seg_out,ll_seg_out= ld_model(img) #lane and drivable area inference
-        pred = od_model(img, augment=opt.augment)[0] #object and traffic sign inference
+        pred = od_model(od_img, augment=opt.augment)[0] #object and traffic sign inference
         t2 = time_synchronized()
         # if i == 0:
         #     print(det_out)
@@ -150,7 +158,7 @@ def detect(cfg,opt):
             gn = torch.tensor(img_det.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             if det is not None and len(det):
                 # Rescale boxes from img_size to img_det size
-                det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img_det.shape).round()
+                det[:, :4] = scale_coords(od_img.shape[2:], det[:, :4], img_det.shape).round()
 
                 # Print results
                 for c in det[:, -1].unique():
