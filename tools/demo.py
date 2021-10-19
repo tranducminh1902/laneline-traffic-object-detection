@@ -72,7 +72,7 @@ def detect(cfg,opt):
     # Set Dataloader
     if opt.source.isnumeric():
         cudnn.benchmark = True  # set True to speed up constant image size inference
-        dataset = LoadStreams(opt.source, img_size=opt.img_size)
+        dataset = LoadStreams(opt.source, img_size=imgsz)
         bs = len(dataset)  # batch_size
     else:
         dataset = LoadImages(opt.source, img_size=opt.img_size)
@@ -111,7 +111,7 @@ def detect(cfg,opt):
         # Inference
         t1 = time_synchronized()
         det_out, da_seg_out,ll_seg_out= ld_model(img) #lane and drivable area inference
-        pred = od_model(od_img, augment=opt.augment)[0] #object and traffic sign inference
+        pred = od_model(img, augment=opt.augment)[0] #object and traffic sign inference
         t2 = time_synchronized()
         # if i == 0:
         #     print(det_out)
@@ -120,7 +120,7 @@ def detect(cfg,opt):
 
         # # Apply NMS
         t3 = time_synchronized()
-        det_pred = pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms)
+        pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms)
         t4 = time_synchronized()
 
         nms_time.update(t4-t3,img.size(0))

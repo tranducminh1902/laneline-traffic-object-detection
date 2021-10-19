@@ -1,0 +1,7 @@
+2021-10-19 12:59:24,386 Using torch 1.9.1 CPU
+2021-10-19 12:59:24,386 
+2021-10-19 12:59:26,274 YOLOv5 🚀 2021-10-19 torch 1.9.1 CPU
+
+2021-10-19 12:59:26,362 Fusing layers... 
+2021-10-19 12:59:26,757 Model Summary: 213 layers, 7045186 parameters, 0 gradients, 15.9 GFLOPs
+2021-10-19 12:59:26,761 Adding AutoShape... 
