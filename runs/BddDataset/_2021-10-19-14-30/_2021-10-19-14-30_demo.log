@@ -1,0 +1,7 @@
+2021-10-19 14:30:37,020 Using torch 1.9.1 CUDA:0 (NVIDIA GeForce GTX 1660, 6144MB)
+2021-10-19 14:30:37,021 
+2021-10-19 14:30:39,700 YOLOv5  2021-10-19 torch 1.9.1 CUDA:0 (NVIDIA GeForce GTX 1660, 6144.0MB)
+
+2021-10-19 14:30:39,757 Fusing layers... 
+2021-10-19 14:30:40,249 Model Summary: 213 layers, 7045186 parameters, 0 gradients
+2021-10-19 14:30:40,250 Adding AutoShape... 

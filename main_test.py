@@ -4,6 +4,8 @@ import shutil
 import time
 from pathlib import Path
 import imageio
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="torch.nn.functional")
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_DIR)
@@ -63,8 +65,10 @@ def detect(cfg,opt):
         ld_model.half()  # to FP16
 
     # Load object detection model
-    od_weights = r'/home/tranducminh1902/Desktop/auto-drive/best _test.pt'
+    od_weights = 'best _test.pt'
     od_model = torch.hub.load('ultralytics/yolov5', 'custom', path=od_weights)  # load FP32 object_detection_model
+    od_model.conf = opt.conf_thres  # confidence threshold (0-1)
+    od_model.iou = opt.iou_thres  # NMS IoU threshold (0-1)
     imgsz = check_img_size(opt.img_size, s=od_model.stride.max())  # check img_size
     if half:
         od_model.half()  # to FP16
@@ -97,7 +101,7 @@ def detect(cfg,opt):
     
     for path, img, img_det, vid_cap,shapes in dataset:
     
-        od_img = img_det.copy()
+        od_img = img.copy()
         # od_img = torch.from_numpy(img).to(device)
         # od_img = od_img.half() if half else od_img.float()  # uint8 to fp16/32
         # od_img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -176,20 +180,20 @@ def detect(cfg,opt):
             # Print time (inference + NMS)
             print('%sDone. (%.3fs)' % (s, t4 - t1))
 
-        if dataset.mode == 'images':
-            cv2.imwrite(save_path,img_det)
+        # if dataset.mode == 'images':
+        #     cv2.imwrite(save_path,img_det)
 
-        elif dataset.mode == 'video':
-            if vid_path != save_path:  # new video
-                vid_path = save_path
-                if isinstance(vid_writer, cv2.VideoWriter):
-                    vid_writer.release()  # release previous video writer
+        # elif dataset.mode == 'video':
+        #     if vid_path != save_path:  # new video
+        #         vid_path = save_path
+        #         if isinstance(vid_writer, cv2.VideoWriter):
+        #             vid_writer.release()  # release previous video writer
 
-                fourcc = 'mp4v'  # output video codec
-                fps = vid_cap.get(cv2.CAP_PROP_FPS)
-                h,w,_=img_det.shape
-                vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
-            vid_writer.write(img_det)
+        #         fourcc = 'mp4v'  # output video codec
+        #         fps = vid_cap.get(cv2.CAP_PROP_FPS)
+        #         h,w,_=img_det.shape
+        #         vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
+        #     vid_writer.write(img_det)
         
         else:
             cv2.imshow('image', img_det)

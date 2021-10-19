@@ -148,7 +148,7 @@ class LoadStreams:  # multiple IP or RTSP cameras
 
     def update(self, i, cap):
         # Read stream `i` frames in daemon thread
-        n, f, read = 0, self.frames[i], 8  # frame number, frame array, inference every 'read' frame
+        n, f, read = 0, self.frames[i], 1  # frame number, frame array, inference every 'read' frame
         while cap.isOpened() and n < f:
             n += 1
             # _, self.imgs[index] = cap.read()
