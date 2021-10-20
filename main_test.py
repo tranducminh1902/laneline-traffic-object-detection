@@ -5,6 +5,8 @@ import time
 from pathlib import Path
 import imageio
 import warnings
+
+from tensorflow.python.keras.backend import sign
 warnings.filterwarnings("ignore", category=UserWarning, module="torch.nn.functional")
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -30,6 +32,7 @@ from lib.utils import plot_one_box,show_seg_result
 from lib.core.function import AverageMeter
 from lib.core.postprocess import morphological_process, connect_lane
 from tqdm import tqdm
+from sign_updater import *
 
 # Import for object detection model
 from object_detection.models.experimental import *
@@ -46,6 +49,9 @@ transform=transforms.Compose([
 
 
 def detect(cfg,opt):
+
+    # dictionary to store traffic signs
+    current_signs = {}
 
     logger, _, _ = create_logger(
         cfg, cfg.LOG_DIR, 'demo')
@@ -74,10 +80,6 @@ def detect(cfg,opt):
         od_model.half()  # to FP16
 
     # Load traffic sign classification model
-    # ts_model = tf.keras.models.load_model('traffic_sign_cls.h5')
-    # ts_model.compile(optimizer='adam',
-    #           loss='sparse_categorical_crossentropy',
-    #           metrics=['accuracy'])
     from traffic_sign_classify import ts_model
 
     # Set Dataloader
@@ -89,11 +91,9 @@ def detect(cfg,opt):
         dataset = LoadStreams(opt.source, img_size=imgsz)
         bs = 1  # batch_size
 
-
-    # Get names and colors
+    # Get names and colors from object detection model
     names = od_model.module.names if hasattr(od_model, 'module') else od_model.names
     colors = [[random.randint(0, 255) for _ in range(3)] for _ in range(len(names))]
-
 
     # Run inference
     t0 = time.time()
@@ -106,12 +106,15 @@ def detect(cfg,opt):
     inf_time = AverageMeter()
     nms_time = AverageMeter()
     
+    n_frame = 0 # count frame
+    guide_sign_timer = 0 
+
     for path, img, img_det, vid_cap,shapes in dataset:
+        n_frame += 1
         ts_img = img_det.copy() # Copy for traffic sign classification
 
         od_img = img.copy() # Copy for object detection inference
         
-
         img = transform(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         if img.ndimension() == 3:
@@ -120,15 +123,11 @@ def detect(cfg,opt):
         # Inference
         t1 = time_synchronized()
         det_out, da_seg_out,ll_seg_out= ld_model(img) #lane and drivable area inference
-        # pred = od_model(img, augment=opt.augment)[0] #object and traffic sign inference
-        pred = od_model(od_img, augment=opt.augment)
+
+        pred = od_model(od_img, augment=opt.augment) #object and traffic sign inference
        
-        # pred.imgs # array of original images (as np array) passed to model for inference
-        # pred.render()  # updates results.imgs with boxes and labels
         t2 = time_synchronized()
-        # if i == 0:
-        #     print(det_out)
-        # inf_out, _ = det_out
+
         inf_time.update(t2-t1,img.size(0))
 
         # # Apply NMS
@@ -162,9 +161,6 @@ def detect(cfg,opt):
         ll_seg_mask = morphological_process(ll_seg_mask, kernel_size=7, func_type=cv2.MORPH_OPEN)
         ll_seg_mask = connect_lane(ll_seg_mask)
 
-        # print ('ll_segout',ll_seg_out)
-        # print ('da_seg',da_seg_mask.sum())
-
         img_det = show_seg_result(img_det, (da_seg_mask, ll_seg_mask), _, _, is_demo=True)
         
         # Process detections
@@ -195,12 +191,13 @@ def detect(cfg,opt):
                     crop_ts_array  = np.expand_dims(crop_ts, axis=0)
                     ts_pred = ts_model.predict(crop_ts_array)
                     sign_label = ts_pred[0].argmax()
-                    sign_img = cv2.imread(f'./trafficsign_meta/{sign_label}.png')
-                    sign_img = cv2.resize(sign_img,(30,30))
-                    img_det[440:470,600:630] = sign_img
+
+                    current_signs = update_traffic_sign(sign_label, current_signs)
+        
+        img_det = plot_traffic_sign(img_det, current_signs)
 
             # Print time (inference + NMS)
-            print('%sDone. (%.3fs)' % (s, t4 - t1))
+        print('%sDone. (%.3fs)' % (s, t4 - t1))
 
         # if dataset.mode == 'images':
         #     cv2.imwrite(save_path,img_det)
