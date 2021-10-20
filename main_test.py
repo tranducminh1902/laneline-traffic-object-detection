@@ -73,13 +73,20 @@ def detect(cfg,opt):
     if half:
         od_model.half()  # to FP16
 
+    # Load traffic sign classification model
+    # ts_model = tf.keras.models.load_model('traffic_sign_cls.h5')
+    # ts_model.compile(optimizer='adam',
+    #           loss='sparse_categorical_crossentropy',
+    #           metrics=['accuracy'])
+    from traffic_sign_classify import ts_model
+
     # Set Dataloader
     if opt.source.isnumeric():
-        cudnn.benchmark = True  # set True to speed up constant image size inference
+        cudnn.benchmark = True # set True to speed up constant image size inference
         dataset = LoadStreams(opt.source, img_size=imgsz)
         bs = len(dataset)  # batch_size
     else:
-        dataset = LoadImages(opt.source, img_size=opt.img_size)
+        dataset = LoadStreams(opt.source, img_size=imgsz)
         bs = 1  # batch_size
 
 
@@ -100,24 +107,22 @@ def detect(cfg,opt):
     nms_time = AverageMeter()
     
     for path, img, img_det, vid_cap,shapes in dataset:
-    
-        od_img = img.copy()
-        # od_img = torch.from_numpy(img).to(device)
-        # od_img = od_img.half() if half else od_img.float()  # uint8 to fp16/32
-        # od_img /= 255.0  # 0 - 255 to 0.0 - 1.0
-        # if od_img.ndimension() == 3:
-        #     od_img = od_img.unsqueeze(0)
+        ts_img = img_det.copy() # Copy for traffic sign classification
+
+        od_img = img.copy() # Copy for object detection inference
+        
 
         img = transform(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         if img.ndimension() == 3:
             img = img.unsqueeze(0)
-
+       
         # Inference
         t1 = time_synchronized()
         det_out, da_seg_out,ll_seg_out= ld_model(img) #lane and drivable area inference
         # pred = od_model(img, augment=opt.augment)[0] #object and traffic sign inference
         pred = od_model(od_img, augment=opt.augment)
+       
         # pred.imgs # array of original images (as np array) passed to model for inference
         # pred.render()  # updates results.imgs with boxes and labels
         t2 = time_synchronized()
@@ -157,6 +162,9 @@ def detect(cfg,opt):
         ll_seg_mask = morphological_process(ll_seg_mask, kernel_size=7, func_type=cv2.MORPH_OPEN)
         ll_seg_mask = connect_lane(ll_seg_mask)
 
+        # print ('ll_segout',ll_seg_out)
+        # print ('da_seg',da_seg_mask.sum())
+
         img_det = show_seg_result(img_det, (da_seg_mask, ll_seg_mask), _, _, is_demo=True)
         
         # Process detections
@@ -177,6 +185,20 @@ def detect(cfg,opt):
             for *xyxy, conf, cls in det:
                 label = '%s %.2f' % (names[int(cls)], conf)
                 plot_one_box(xyxy, img_det , label=label, color=colors[int(cls)], line_thickness=2)
+                # print (int(cls))
+                if int(cls) == 10:
+                    crop_ts = ts_img[int(xyxy[1]): int(xyxy[3]),int(xyxy[0]): int(xyxy[2])]
+                    crop_ts = crop_ts[..., ::-1]
+                    crop_ts = cv2.resize(crop_ts, (30, 30))
+                    crop_ts = crop_ts/255.0
+                    # print (crop_ts.shape)
+                    crop_ts_array  = np.expand_dims(crop_ts, axis=0)
+                    ts_pred = ts_model.predict(crop_ts_array)
+                    sign_label = ts_pred[0].argmax()
+                    sign_img = cv2.imread(f'./trafficsign_meta/{sign_label}.png')
+                    sign_img = cv2.resize(sign_img,(30,30))
+                    img_det[440:470,600:630] = sign_img
+
             # Print time (inference + NMS)
             print('%sDone. (%.3fs)' % (s, t4 - t1))
 
@@ -195,10 +217,9 @@ def detect(cfg,opt):
         #         vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
         #     vid_writer.write(img_det)
         
-        else:
-            cv2.imshow('image', img_det)
-            if cv2.waitKey(1) == ord('q'):  # q to quit
-                    raise StopIteration  # 1 millisecond
+        cv2.imshow('image', img_det)
+        if cv2.waitKey(1) == ord('q'):  # q to quit
+            raise StopIteration  # 1 millisecond
 
     print('Results saved to %s' % Path(opt.save_dir))
     print('Done. (%.3fs)' % (time.time() - t0))

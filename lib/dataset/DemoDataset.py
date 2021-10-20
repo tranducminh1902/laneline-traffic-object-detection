@@ -117,7 +117,7 @@ class LoadStreams:  # multiple IP or RTSP cameras
                 sources = [x.strip() for x in f.read().strip().splitlines() if len(x.strip())]
         else:
             sources = [sources]
-
+        # sources = [sources]
         n = len(sources)
         self.imgs, self.fps, self.frames, self.threads = [None] * n, [0] * n, [0] * n, [None] * n
         self.sources = [clean_str(x) for x in sources]  # clean source names for later
@@ -134,6 +134,7 @@ class LoadStreams:  # multiple IP or RTSP cameras
             self.frames[i] = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float('inf')  # infinite stream fallback
 
             _, self.imgs[i] = cap.read()  # guarantee first frame
+            self.imgs[i] = cv2.resize(self.imgs[i], (640,480))
             self.threads[i] = Thread(target=self.update, args=([i, cap]), daemon=True)
             print(f" success ({self.frames[i]} frames {w}x{h} at {self.fps[i]:.2f} FPS)")
             self.threads[i].start()
@@ -155,7 +156,9 @@ class LoadStreams:  # multiple IP or RTSP cameras
             cap.grab()
             if n % read == 0:
                 success, im = cap.retrieve()
+                im = cv2.resize(im, (640,480))
                 self.imgs[i] = im if success else self.imgs[i] * 0
+                # print (success)
             time.sleep(1 / self.fps[i])  # wait time
 
     def __iter__(self):
