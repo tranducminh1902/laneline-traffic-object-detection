@@ -88,7 +88,7 @@ def detect(cfg,opt):
         dataset = LoadStreams(opt.source, img_size=imgsz)
         bs = len(dataset)  # batch_size
     else:
-        dataset = LoadStreams(opt.source, img_size=imgsz)
+        dataset = LoadImages(opt.source, img_size=imgsz)
         bs = 1  # batch_size
 
     # Get names and colors from object detection model
@@ -111,7 +111,7 @@ def detect(cfg,opt):
 
     for path, img, img_det, vid_cap,shapes in dataset:
         n_frame += 1
-        ts_img = img_det.copy() # Copy for traffic sign classification
+        ts_img = img.copy() # Copy for traffic sign classification
 
         od_img = img.copy() # Copy for object detection inference
         

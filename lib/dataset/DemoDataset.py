@@ -48,6 +48,7 @@ class LoadImages:  # for inference
         assert self.nf > 0, 'No images or videos found in %s. Supported formats are:\nimages: %s\nvideos: %s' % \
                             (p, img_formats, vid_formats)
 
+
     def __iter__(self):
         self.count = 0
         return self
@@ -61,6 +62,10 @@ class LoadImages:  # for inference
             # Read video
             self.mode = 'video'
             ret_val, img0 = self.cap.read()
+            self.w_origin = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            self.h_origin = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            # print (self.h_origin, self.w_origin)
+            img0 = cv2.resize(img0, (640,480))
             if not ret_val:
                 self.count += 1
                 self.cap.release()
@@ -70,7 +75,9 @@ class LoadImages:  # for inference
                     path = self.files[self.count]
                     self.new_video(path)
                     ret_val, img0 = self.cap.read()
+                    img0 = cv2.resize(img0, (640,480))
             h0, w0 = img0.shape[:2]
+            # print (h0, w0)
 
             self.frame += 1
             print('\n video %g/%g (%g/%g) %s: ' % (self.count + 1, self.nf, self.frame, self.nframes, path), end='')
@@ -95,11 +102,14 @@ class LoadImages:  # for inference
 
 
         # cv2.imwrite(path + '.letterbox.jpg', 255 * img.transpose((1, 2, 0))[:, :, ::-1])  # save letterbox image
+        print (img.shape, img0.shape)
+        
         return path, img, img0, self.cap, shapes
 
     def new_video(self, path):
         self.frame = 0
         self.cap = cv2.VideoCapture(path)
+        
         self.nframes = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     def __len__(self):
