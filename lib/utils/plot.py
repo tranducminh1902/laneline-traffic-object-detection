@@ -54,7 +54,7 @@ def show_seg_result(img, result, index, epoch, save_dir=None, is_ll=False,palett
     color_seg = color_seg[..., ::-1]
     # print(color_seg.shape)
     color_mask = np.mean(color_seg, 2)
-    color_mask[0:((result[0].shape[0]//3)*2),:] = 0 #take Region of Interest = 1/3 bottom of frame
+    color_mask[0:((result[0].shape[0]//2)*1),:] = 0 #take Region of Interest = 1/2 bottom of frame
     img[color_mask != 0] = img[color_mask != 0] * 0.7 + color_seg[color_mask != 0] * 0.3
     # img = img * 0.5 + color_seg * 0.5
     img = img.astype(np.uint8)

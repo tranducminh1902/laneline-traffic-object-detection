@@ -5,7 +5,7 @@ from tensorflow.keras.preprocessing import image
 import matplotlib.image as mpimg
 import numpy as np
 
-ts_model = tf.keras.models.load_model('ts_classifier_weight.h5')
+ts_model = tf.keras.models.load_model('weight_281021_2.h5')
 ts_model.compile(optimizer='adam',
             loss='sparse_categorical_crossentropy',
             metrics=['accuracy'])

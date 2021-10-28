@@ -27,16 +27,11 @@ from lib.config import update_config
 from lib.utils.utils import create_logger, select_device, time_synchronized
 from lib.models import get_net
 from lib.dataset import LoadImages, LoadStreams
-from lib.core.general import non_max_suppression, scale_coords
 from lib.utils import plot_one_box,show_seg_result
 from lib.core.function import AverageMeter
 from lib.core.postprocess import morphological_process, connect_lane
 from tqdm import tqdm
 from sign_updater import *
-
-# Import for object detection model
-from object_detection.models.experimental import *
-from object_detection.utils.utils import *
 
 normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -75,7 +70,7 @@ def detect(cfg,opt):
     od_model = torch.hub.load('ultralytics/yolov5', 'custom', path=od_weights)  # load FP32 object_detection_model
     od_model.conf = opt.conf_thres  # confidence threshold (0-1)
     od_model.iou = opt.iou_thres  # NMS IoU threshold (0-1)
-    imgsz = check_img_size(opt.img_size, s=od_model.stride.max())  # check img_size
+
     if half:
         od_model.half()  # to FP16
 
@@ -85,10 +80,10 @@ def detect(cfg,opt):
     # Set Dataloader
     if opt.source.isnumeric():
         cudnn.benchmark = True # set True to speed up constant image size inference
-        dataset = LoadStreams(opt.source, img_size=imgsz)
+        dataset = LoadStreams(opt.source, img_size=opt.img_size)
         bs = len(dataset)  # batch_size
     else:
-        dataset = LoadImages(opt.source, img_size=imgsz)
+        dataset = LoadStreams(opt.source, img_size=opt.img_size)
         bs = 1  # batch_size
 
     # Get names and colors from object detection model
@@ -136,9 +131,7 @@ def detect(cfg,opt):
         t4 = time_synchronized()
 
         nms_time.update(t4-t3,img.size(0))
-        # det=det_pred[0]
 
-        # save_path = str(opt.save_dir +'/'+ Path(path).name) if dataset.mode != 'stream' else str(opt.save_dir + '/' + "web.mp4")
 
         _, _, height, width = img.shape
         h,w,_=img_det.shape
@@ -182,10 +175,10 @@ def detect(cfg,opt):
                 label = '%s %.2f' % (names[int(cls)], conf)
                 plot_one_box(xyxy, img_det , label=label, color=colors[int(cls)], line_thickness=2)
                 # print (int(cls))
-                if int(cls) == 10:
+                if int(cls) == 10 :
                     crop_ts = ts_img[int(xyxy[1]): int(xyxy[3]),int(xyxy[0]): int(xyxy[2])]
                     crop_ts = crop_ts[..., ::-1]
-                    crop_ts = cv2.resize(crop_ts, (30, 30))
+                    crop_ts = cv2.resize(crop_ts, (50, 50))
                     crop_ts = crop_ts/255.0
                     # print (crop_ts.shape)
                     crop_ts_array  = np.expand_dims(crop_ts, axis=0)
@@ -214,6 +207,10 @@ def detect(cfg,opt):
         #         vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
         #     vid_writer.write(img_det)
         
+        if opt.source.isnumeric():
+            img_det = cv2.resize(img_det, (1280, 960))
+        else:
+            img_det = cv2.resize(img_det, (1440, 810))
         cv2.imshow('image', img_det)
         if cv2.waitKey(1) == ord('q'):  # q to quit
             raise StopIteration  # 1 millisecond
@@ -240,9 +237,4 @@ if __name__ == '__main__':
     parser.add_argument('--update', action='store_true', help='update all models')
     opt = parser.parse_args()
     with torch.no_grad():
-        if opt.update:  # update all models (to fix SourceChangeWarning)
-            for opt.weights in ['yolov5s.pt', 'yolov5m.pt', 'yolov5l.pt', 'yolov5x.pt', 'yolov3-spp.pt']:
-                detect(cfg,opt)
-                create_pretrained(opt.weights, opt.weights)
-        else:
-            detect(cfg,opt)
+        detect(cfg,opt)

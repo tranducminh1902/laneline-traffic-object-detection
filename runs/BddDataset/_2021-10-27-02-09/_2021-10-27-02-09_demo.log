@@ -1,0 +1,8 @@
+2021-10-27 02:09:23,486 Using torch 1.7.1 CUDA:0 (NVIDIA GeForce GTX 1660, 6144MB)
+2021-10-27 02:09:23,486 
+2021-10-27 02:09:25,774 YOLOv5  2021-10-19 torch 1.7.1 CUDA:0 (NVIDIA GeForce GTX 1660, 6144.0MB)
+
+2021-10-27 02:09:25,834 Fusing layers... 
+2021-10-27 02:09:27,104 Model Summary: 213 layers, 7045186 parameters, 0 gradients, 15.9 GFLOPs
+2021-10-27 02:09:27,106 Adding AutoShape... 
+2021-10-27 02:09:28,313 Model was constructed with shape (None, 50, 50, 3) for input Tensor("conv2d_26_input:0", shape=(None, 50, 50, 3), dtype=float32), but it was called on an input with incompatible shape (None, 30, 30, 3).
